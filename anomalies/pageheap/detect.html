@@ -1,0 +1,82 @@
+<html>
+<body>
+<h1>Detecting PageHeap</h1>
+<h2>Results: <div id="result">Running or failed</div></h2>
+</body>
+<script>
+function set_text(msg) {
+    document.getElementById("result").innerText = msg;
+}
+
+var ALLOC_TIME = 20; //ms
+
+function NoAllocStore(count) {
+    this.count = count;
+    this.array = new Array(count);
+    for(var i=0; i<count; i++) {
+	this.array[i] = 0x41414141;
+    }
+    this.index = 0;
+}
+
+NoAllocStore.prototype.store = function(obj) {
+    if (this.index >= this.count) {
+	alert("bad");
+	throw false;
+    }
+    this.array[this.index] = obj;
+    this.index++;
+}
+
+var nstore = new NoAllocStore(100000);
+
+function doFor(fun, time) {
+    var i = 0;
+    var startTime = performance.now();
+    do {
+	for(var j=0; j<100; j++)
+	    nstore.store(fun());
+	i++;
+    } while((performance.now() - startTime) < time);
+    return i;
+}
+
+function allocPageBA() {
+    return new Uint8Array(0x1000);
+}
+
+function allocSmallBA() {
+    return new Uint8Array(0x10);
+}
+
+// Use the holes in the heap
+// var HOLES_ITER = 3000;
+// var store = new Array();
+// for(var i = 0; i < HOLES_ITER; i++) {
+//     store.push(allocPageBA());
+//     store.push(allocSmallBA());
+// }
+
+// Measure
+var bigRet = doFor(allocPageBA, ALLOC_TIME);
+var smallRet = doFor(allocSmallBA, ALLOC_TIME);
+var times = smallRet / bigRet;
+
+// Display
+if(window.navigator.userAgent.indexOf("Edge") > -1) {
+    if(times < 3) {
+	set_text("Edge probably under PageHeap, abort :(");
+    } else {
+	set_text("Edge probably safe to run exploit :)");
+    }
+} else if(window.navigator.userAgent.indexOf("rv:11") > -1) {
+    if(times < 2) {
+	set_text("IE11 probably under PageHeap, abort :(");
+    } else {
+	set_text("IE11 probably safe to run exploit :)");
+    }
+} else {
+    set_text("Browser not supported");
+}
+</script>
+</html>
